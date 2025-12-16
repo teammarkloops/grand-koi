@@ -94,6 +94,13 @@ export default function CreateProductPage() {
                 <Input id="size_in" name="size_in" defaultValue="29.5" />
               </Field>
 
+              <Field>
+                <FieldLabel htmlFor="age">
+                  Age (metafield custom.age)
+                </FieldLabel>
+                <Input id="age" name="age" defaultValue="10" />
+              </Field>
+
               {/* Image upload */}
               <Field>
                 <FieldLabel htmlFor="imageFile">Image file</FieldLabel>

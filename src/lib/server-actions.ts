@@ -41,7 +41,6 @@ type StagedUploadsCreateResponse = {
  * and return the resourceUrl we can use as originalSource in media.
  */
 async function uploadImageToShopify(file: File): Promise<string> {
-  // 1) Ask Shopify for a staged upload target
   const STAGED_UPLOADS_MUTATION = `
     mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
       stagedUploadsCreate(input: $input) {
@@ -94,12 +93,10 @@ async function uploadImageToShopify(file: File): Promise<string> {
     throw new Error("No staged upload target returned from Shopify");
   }
 
-  // 2) POST the actual file to the staged upload URL
   const uploadForm = new FormData();
   for (const param of target.parameters) {
     uploadForm.append(param.name, param.value);
   }
-  // Shopify expects the binary as the last form field, usually named "file"
   uploadForm.append("file", file);
 
   const uploadRes = await fetch(target.url, {
@@ -115,7 +112,6 @@ async function uploadImageToShopify(file: File): Promise<string> {
     throw new Error("Failed to upload image to Shopify staged upload URL");
   }
 
-  // 3) Return the resourceUrl, which Shopify will treat as the originalSource
   return target.resourceUrl;
 }
 
@@ -123,7 +119,7 @@ async function uploadImageToShopify(file: File): Promise<string> {
  * Main server action: reads form data, uploads image (if any),
  * then creates product + variant in Shopify.
  */
-export async function createProduct(formData: FormData) {
+export async function createProduct(formData: FormData): Promise<void> {
   const title = String(formData.get("title") ?? "");
   const descriptionHtml = String(formData.get("descriptionHtml") ?? "");
   const vendor = String(formData.get("vendor") ?? "");
@@ -134,6 +130,7 @@ export async function createProduct(formData: FormData) {
   const sex = String(formData.get("sex") ?? "");
   const size = String(formData.get("size") ?? "");
   const sizeIn = String(formData.get("size_in") ?? "");
+  const age = String(formData.get("age") ?? "");
 
   const imageFile = formData.get("imageFile") as unknown as File | null;
 
@@ -147,7 +144,7 @@ export async function createProduct(formData: FormData) {
     originalSource = await uploadImageToShopify(imageFile);
   }
 
-  // 2) Prepare metafields matching your manual product
+  // 2) Prepare metafields matching your manual product (plus age)
   const metafields = [
     breeder && {
       namespace: "custom",
@@ -172,6 +169,12 @@ export async function createProduct(formData: FormData) {
       key: "size_in",
       type: "single_line_text_field",
       value: sizeIn,
+    },
+    age && {
+      namespace: "custom",
+      key: "age",
+      type: "single_line_text_field",
+      value: age,
     },
   ].filter(Boolean) as {
     namespace: string;
@@ -308,13 +311,8 @@ export async function createProduct(formData: FormData) {
     }
   }
 
-  // Optionally you can redirect or return something specific
   console.log("Created product:", productCreate.product);
 
-  // In a server action, returning a value is allowed but not used by the form directly.
-  return {
-    id: productId,
-    title: productCreate.product.title,
-    status: productCreate.product.status,
-  };
+  // Return nothing to satisfy <form action={createProduct}> typing
+  return;
 }
