@@ -1,7 +1,4 @@
 // src/app/page.tsx
-"use client";
-
-import { useState, FormEvent } from "react";
 import {
   Card,
   CardContent,
@@ -9,77 +6,29 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-
-// Import the server action (keeps 'use server' directive server-side)
 import { createProduct } from "@/lib/server-actions";
+import { SubmitButton } from "./submit-button";
 
 export default function CreateProductPage() {
-  const [status, setStatus] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setIsLoading(true);
-    setStatus("Creating product...");
-    setError(null);
-
-    const formData = new FormData(e.currentTarget);
-
-    const title = String(formData.get("title") || "");
-    const descriptionHtml = String(formData.get("descriptionHtml") || "");
-    const price = parseFloat(String(formData.get("price") || "0"));
-    const age = String(formData.get("age") || "");
-    const sex = String(formData.get("sex") || "");
-    const size = String(formData.get("size") || "");
-    const imageUrl = String(formData.get("imageUrl") || "");
-
-    try {
-      const result = await createProduct({
-        title,
-        descriptionHtml,
-        price,
-        age,
-        sex,
-        size,
-        imageUrl,
-      });
-
-      setStatus(`Created product: ${result.title} (ID: ${result.id})`);
-    } catch (err: unknown) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to create product");
-      setStatus(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle>Create Shopify Product</CardTitle>
           <CardDescription>
-            Create a new product using the Shopify Admin API via a server
-            action.
+            Create a new product using the Shopify Admin API via a server action
+            with file upload.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit}>
+          <form action={createProduct}>
             <FieldGroup className="space-y-6">
               <Field>
                 <FieldLabel htmlFor="title">Title</FieldLabel>
-                <Input
-                  id="title"
-                  name="title"
-                  defaultValue="Sample T-Shirt"
-                  required
-                />
+                <Input id="title" name="title" defaultValue="Sanke" required />
               </Field>
 
               <Field>
@@ -89,9 +38,14 @@ export default function CreateProductPage() {
                 <Textarea
                   id="descriptionHtml"
                   name="descriptionHtml"
-                  defaultValue="<p>Soft cotton t-shirt, perfect for everyday wear.</p>"
-                  rows={4}
+                  defaultValue=""
+                  rows={3}
                 />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="vendor">Vendor</FieldLabel>
+                <Input id="vendor" name="vendor" defaultValue="Grand Koi0" />
               </Field>
 
               <Field>
@@ -101,49 +55,65 @@ export default function CreateProductPage() {
                   name="price"
                   type="number"
                   step="0.01"
-                  defaultValue="19.99"
+                  defaultValue="11999.00"
                   required
                 />
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="age">Age metafield</FieldLabel>
-                <Input id="age" name="age" defaultValue="Adult" />
+                <FieldLabel htmlFor="tags">Tags (comma-separated)</FieldLabel>
+                <Input id="tags" name="tags" defaultValue="Other Koi, Sanke" />
+              </Field>
+
+              {/* Metafields matching your example */}
+              <Field>
+                <FieldLabel htmlFor="breeder">
+                  Breeder (metafield custom.breeder)
+                </FieldLabel>
+                <Input id="breeder" name="breeder" defaultValue="Momotaro" />
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="sex">Sex metafield</FieldLabel>
-                <Input id="sex" name="sex" defaultValue="Unisex" />
+                <FieldLabel htmlFor="sex">
+                  Sex (metafield custom.sex)
+                </FieldLabel>
+                <Input id="sex" name="sex" defaultValue="Female" />
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="size">Size metafield</FieldLabel>
-                <Input id="size" name="size" defaultValue="XL" />
+                <FieldLabel htmlFor="size">
+                  Size (metafield custom.size)
+                </FieldLabel>
+                <Input id="size" name="size" defaultValue="74.93" />
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="imageUrl">Image URL</FieldLabel>
+                <FieldLabel htmlFor="size_in">
+                  Size in inches (metafield custom.size_in)
+                </FieldLabel>
+                <Input id="size_in" name="size_in" defaultValue="29.5" />
+              </Field>
+
+              {/* Image upload */}
+              <Field>
+                <FieldLabel htmlFor="imageFile">Image file</FieldLabel>
                 <Input
-                  id="imageUrl"
-                  name="imageUrl"
-                  defaultValue="https://your-cdn.com/images/sample-shirt-front.jpg"
+                  id="imageFile"
+                  name="imageFile"
+                  type="file"
+                  accept="image/*"
                 />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Choose an image file from your device. It will be uploaded to
+                  Shopify and attached as product media.
+                </p>
               </Field>
 
               <div className="pt-4">
-                <Button type="submit" disabled={isLoading} className="w-full">
-                  {isLoading ? "Creating..." : "Create Product"}
-                </Button>
+                <SubmitButton />
               </div>
             </FieldGroup>
           </form>
-
-          {status && (
-            <p className="mt-6 text-sm font-medium text-green-600">{status}</p>
-          )}
-          {error && (
-            <p className="mt-6 text-sm font-medium text-destructive">{error}</p>
-          )}
         </CardContent>
       </Card>
     </div>
