@@ -2,11 +2,10 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { 
-  Trash2, Plus, UploadCloud, CheckCircle2, Loader2, Save, XCircle, Eraser, Image as ImageIcon, AlertCircle, Sparkles
+  Trash2, Plus, UploadCloud, CheckCircle2, Loader2, Save, XCircle, Eraser, Image as ImageIcon, AlertCircle, Sparkles, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
@@ -81,7 +80,7 @@ export function BulkEditor() {
         const hydrated = parsed.map((p: any) => ({
           ...p,
           imageFile: null,
-          status: p.status === "pending" ? "idle" : p.status,
+          status: p.status === "pending" ? "idle" : p.status, // Reset stuck pending
         }));
         
         if (hydrated.length > 0) {
@@ -97,14 +96,13 @@ export function BulkEditor() {
     }
   }, []);
 
-  // 2. Auto-Save
+  // 2. Auto-Save (Debounced for Text Input)
   useEffect(() => {
     if (!isClient) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
     saveTimeoutRef.current = setTimeout(() => {
-      const dataToSave = rows.map(({ imageFile, ...rest }) => rest);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+      saveToLocalStorage(rows);
     }, 1000);
 
     return () => {
@@ -113,6 +111,12 @@ export function BulkEditor() {
   }, [rows, isClient]);
 
   // --- Helper Functions ---
+
+  // Centralized save function to ensure consistency
+  const saveToLocalStorage = (currentRows: ProductRow[]) => {
+    const dataToSave = currentRows.map(({ imageFile, ...rest }) => rest);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+  };
 
   function createEmptyRow(): ProductRow {
     return {
@@ -136,8 +140,9 @@ export function BulkEditor() {
 
   const handleClearAll = () => {
     if (confirm("Are you sure you want to delete ALL rows? This cannot be undone.")) {
-      setRows([createEmptyRow()]);
-      localStorage.removeItem(STORAGE_KEY);
+      const newRows = [createEmptyRow()];
+      setRows(newRows);
+      saveToLocalStorage(newRows); // Instant save
       toast.success("All rows cleared");
     }
   };
@@ -152,7 +157,8 @@ export function BulkEditor() {
        toast.warning("You are creating a very large batch. Uploading might take time.");
     }
 
-    const startCount = rows.length;
+    const isFirstRowEmpty = rows.length === 1 && !rows[0].title && !rows[0].price;
+    const startCount = isFirstRowEmpty ? 0 : rows.length;
     
     const newRows: ProductRow[] = Array.from({ length: testCount }).map((_, i) => {
       const mainCat = MAIN_CATEGORIES[Math.floor(Math.random() * MAIN_CATEGORIES.length)];
@@ -181,15 +187,19 @@ export function BulkEditor() {
       };
     });
 
-    let currentRows = [...rows];
-    if (currentRows.length === 1 && !currentRows[0].title && !currentRows[0].price) {
-        currentRows = [];
+    let updatedRows: ProductRow[];
+    
+    if (isFirstRowEmpty) {
+        updatedRows = newRows;
+    } else {
+        updatedRows = [...rows, ...newRows];
     }
 
-    setRows([...currentRows, ...newRows]);
+    setRows(updatedRows);
+    saveToLocalStorage(updatedRows); // Instant save so refresh keeps them
     setShowTestModal(false);
     setTestImage(null);
-    toast.success(`Added ${testCount} Test Products`);
+    toast.success('Test Products Added');
   };
 
   const addRow = () => {
@@ -201,11 +211,29 @@ export function BulkEditor() {
   };
 
   const removeRow = (id: string) => {
-    setRows((prev) => prev.filter((r) => r.id !== id));
+    setRows((prev) => {
+        const next = prev.filter((r) => r.id !== id);
+        // Ensure at least one empty row remains if all deleted
+        if (next.length === 0) {
+            const empty = [createEmptyRow()];
+            saveToLocalStorage(empty);
+            return empty;
+        }
+        return next;
+    });
   };
   
   const clearCompleted = () => {
-    setRows((prev) => prev.filter((r) => r.status !== "success"));
+    setRows((prev) => {
+        const next = prev.filter((r) => r.status !== "success");
+        if (next.length === 0) {
+            const empty = [createEmptyRow()];
+            saveToLocalStorage(empty);
+            return empty;
+        }
+        saveToLocalStorage(next);
+        return next;
+    });
   };
 
   const updateRow = (id: string, field: keyof ProductRow, value: any) => {
@@ -229,8 +257,9 @@ export function BulkEditor() {
     }
 
     setIsUploading(true);
-    const BATCH_SIZE = 3;
+    const BATCH_SIZE = 5;
     
+    // Helper to process a single row and IMMEDIATELY update storage
     const processRow = async (row: ProductRow) => {
       setRows(prev => prev.map(r => r.id === row.id ? { ...r, status: "pending", errorMessage: undefined } : r));
 
@@ -249,14 +278,22 @@ export function BulkEditor() {
 
       const result = await createProduct(formData);
 
-      setRows(prev => prev.map(r => {
-        if (r.id !== row.id) return r;
-        return {
-          ...r,
-          status: result.success ? "success" : "error",
-          errorMessage: result.error
-        };
-      }));
+      setRows(prev => {
+        const nextRows = prev.map(r => {
+            if (r.id !== row.id) return r;
+            return {
+                ...r,
+                status: result.success ? "success" : "error",
+                errorMessage: result.error
+            } as ProductRow;
+        });
+        
+        // Force save to storage immediately. 
+        // We use nextRows to get the exact state we just calculated.
+        saveToLocalStorage(nextRows);
+        
+        return nextRows;
+      });
       
       return result.success;
     };
@@ -271,8 +308,10 @@ export function BulkEditor() {
     toast.success("Batch Processing Complete");
   };
   
+  // Cleanup effect: If everything is green, clear storage
   useEffect(() => {
-    if (rows.length > 0 && rows.every(r => r.status === "success")) {
+    const isNotEmpty = rows.length > 0 && (rows[0].title !== "" || rows.length > 1);
+    if (isNotEmpty && rows.every(r => r.status === "success")) {
         localStorage.removeItem(STORAGE_KEY);
         toast.success("All products uploaded successfully!", {
              description: "Draft storage has been cleared for a fresh start."
@@ -297,7 +336,7 @@ export function BulkEditor() {
             <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
                 Bulk Product Creator
                 <Badge variant="secondary" className="text-xs font-normal">
-                    {rows.length} Items
+                    {rows.length === 1 ? "1 - Item" : `${rows.length} - Items`}
                 </Badge>
             </h2>
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -402,7 +441,7 @@ export function BulkEditor() {
                 <div 
                     key={row.id} 
                     className={`
-                        group relative overflow-visible flex flex-col md:flex-row gap-6 p-6 rounded-xl border bg-card shadow-sm transition-all
+                        group relative overflow-hidden flex flex-col md:flex-row gap-6 p-6 rounded-xl border bg-card shadow-sm transition-all
                         ${isDone ? "border-green-200 bg-green-50/30 dark:bg-green-900/20" : "hover:shadow-md"}
                         ${isError ? "border-red-300 bg-red-50/30 dark:bg-red-900/20" : ""}
                     `}
@@ -629,7 +668,7 @@ export function BulkEditor() {
       {/* Footer Instructions */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 border rounded-lg bg-muted/20">
          <Save className="h-4 w-4 text-blue-500" />
-         <span>Progress saves automatically. Local storage clears only when all products upload successfully.</span>
+         <span>Progress saves automatically.</span>
       </div>
     </div>
   );

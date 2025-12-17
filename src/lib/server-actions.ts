@@ -156,6 +156,7 @@ export async function createProduct(formData: FormData): Promise<ActionResponse>
     let originalSource: string | null = null;
     if (imageFile && imageFile.size > 0) {
       originalSource = await uploadImageToShopify(imageFile);
+      console.log("Image uploaded to Shopify...");
     }
 
     // 2) Prepare metafields
@@ -254,6 +255,7 @@ export async function createProduct(formData: FormData): Promise<ActionResponse>
         media,
       }
     );
+    console.log("Product created..."); 
 
     const { productCreate } = productData;
 
@@ -312,6 +314,7 @@ export async function createProduct(formData: FormData): Promise<ActionResponse>
       );
 
       const { productVariantsBulkCreate } = variantsData;
+      console.log("Product variants created...");
 
       if (productVariantsBulkCreate.userErrors.length > 0) {
          return {
