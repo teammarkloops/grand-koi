@@ -1,4 +1,3 @@
-// src/lib/server-actions.ts
 "use server";
 
 import { shopifyAdminFetch } from "@/lib/shopify";
@@ -34,6 +33,12 @@ type StagedUploadsCreateResponse = {
     }[];
     userErrors: { field: string[] | null; message: string }[];
   };
+};
+
+export type ActionResponse = {
+  success: boolean;
+  productId?: string;
+  error?: string;
 };
 
 /**
@@ -119,155 +124,114 @@ async function uploadImageToShopify(file: File): Promise<string> {
  * Main server action: reads form data, uploads image (if any),
  * then creates product + variant in Shopify.
  */
-export async function createProduct(formData: FormData): Promise<void> {
-  const title = String(formData.get("title") ?? "");
-  const descriptionHtml = String(formData.get("descriptionHtml") ?? "");
-  const price = parseFloat(String(formData.get("price") ?? "0"));
+export async function createProduct(formData: FormData): Promise<ActionResponse> {
+  try {
+    const title = String(formData.get("title") ?? "");
+    const descriptionHtml = String(formData.get("descriptionHtml") ?? "");
+    const price = parseFloat(String(formData.get("price") ?? "0"));
 
-  // Get category selections for tags
-  const mainCategory = String(formData.get("mainCategory") ?? "");
-  const subCategory = String(formData.get("subCategory") ?? "");
+    // Get category selections for tags
+    const mainCategory = String(formData.get("mainCategory") ?? "");
+    const subCategory = String(formData.get("subCategory") ?? "");
 
-  const breeder = String(formData.get("breeder") ?? "");
-  const sex = String(formData.get("sex") ?? "");
-  const size = String(formData.get("size") ?? "");
-  const sizeIn = String(formData.get("size_in") ?? "");
-  const age = String(formData.get("age") ?? "");
+    const breeder = String(formData.get("breeder") ?? "");
+    const sex = String(formData.get("sex") ?? "");
+    const size = String(formData.get("size") ?? "");
+    const sizeIn = String(formData.get("size_in") ?? "");
+    const age = String(formData.get("age") ?? "");
 
-  const imageFile = formData.get("imageFile") as unknown as File | null;
+    const imageFile = formData.get("imageFile") as unknown as File | null;
 
-  if (!title || !price || Number.isNaN(price)) {
-    throw new Error("Title and valid price are required.");
-  }
-
-  // 1) Upload image file if provided
-  let originalSource: string | null = null;
-  if (imageFile && typeof imageFile === "object") {
-    originalSource = await uploadImageToShopify(imageFile);
-  }
-
-  // 2) Prepare metafields
-  const metafields = [
-    breeder && {
-      namespace: "custom",
-      key: "breeder",
-      type: "single_line_text_field",
-      value: breeder,
-    },
-    sex && {
-      namespace: "custom",
-      key: "sex",
-      type: "single_line_text_field",
-      value: sex,
-    },
-    size && {
-      namespace: "custom",
-      key: "size",
-      type: "single_line_text_field",
-      value: size,
-    },
-    sizeIn && {
-      namespace: "custom",
-      key: "size_in",
-      type: "single_line_text_field",
-      value: sizeIn,
-    },
-    age && {
-      namespace: "custom",
-      key: "age",
-      type: "single_line_text_field",
-      value: age,
-    },
-  ].filter(Boolean) as {
-    namespace: string;
-    key: string;
-    type: string;
-    value: string;
-  }[];
-
-  // 3) Prepare media (if we uploaded an image)
-  const media = originalSource
-    ? [
-        {
-          alt: title,
-          mediaContentType: "IMAGE",
-          originalSource,
-        },
-      ]
-    : [];
-
-  // 4) Build tags array from main and sub categories
-  const tags: string[] = [];
-  if (mainCategory) tags.push(mainCategory);
-  if (subCategory) tags.push(subCategory);
-
-  // 5) Create the product
-  const CREATE_PRODUCT_MUTATION = `
-    mutation CreateProductWithMetafieldsAndImage(
-      $title: String!
-      $descriptionHtml: String!
-      $tags: [String!]
-      $metafields: [MetafieldInput!]
-      $media: [CreateMediaInput!]
-    ) {
-      productCreate(
-        product: {
-          title: $title
-          descriptionHtml: $descriptionHtml
-          tags: $tags
-          metafields: $metafields
-        }
-        media: $media
-      ) {
-        product {
-          id
-          title
-          status
-        }
-        userErrors {
-          field
-          message
-        }
-      }
+    if (!title) {
+      return { success: false, error: "Title is required." };
     }
-  `;
-
-  const productData = await shopifyAdminFetch<ProductCreateResponse>(
-    CREATE_PRODUCT_MUTATION,
-    {
-      title,
-      descriptionHtml,
-      tags,
-      metafields,
-      media,
+    if (!price || Number.isNaN(price)) {
+      return { success: false, error: "Valid price is required." };
     }
-  );
 
-  const { productCreate } = productData;
+    // 1) Upload image file if provided
+    let originalSource: string | null = null;
+    if (imageFile && imageFile.size > 0) {
+      originalSource = await uploadImageToShopify(imageFile);
+    }
 
-  if (productCreate.userErrors.length > 0 || !productCreate.product) {
-    console.error("productCreate errors:", productCreate.userErrors);
-    throw new Error(productCreate.userErrors.map((e) => e.message).join(", "));
-  }
+    // 2) Prepare metafields
+    const metafields = [
+      breeder && {
+        namespace: "custom",
+        key: "breeder",
+        type: "single_line_text_field",
+        value: breeder,
+      },
+      sex && {
+        namespace: "custom",
+        key: "sex",
+        type: "single_line_text_field",
+        value: sex,
+      },
+      size && {
+        namespace: "custom",
+        key: "size",
+        type: "single_line_text_field",
+        value: size,
+      },
+      sizeIn && {
+        namespace: "custom",
+        key: "size_in",
+        type: "single_line_text_field",
+        value: sizeIn,
+      },
+      age && {
+        namespace: "custom",
+        key: "age",
+        type: "single_line_text_field",
+        value: age,
+      },
+    ].filter(Boolean) as {
+      namespace: string;
+      key: string;
+      type: string;
+      value: string;
+    }[];
 
-  const productId = productCreate.product.id;
+    // 3) Prepare media (if we uploaded an image)
+    const media = originalSource
+      ? [
+          {
+            alt: title,
+            mediaContentType: "IMAGE",
+            originalSource,
+          },
+        ]
+      : [];
 
-  // 6) Create a single variant with the price
-  if (price && price > 0) {
-    const CREATE_VARIANTS_MUTATION = `
-      mutation ProductVariantsCreate(
-        $productId: ID!
-        $variants: [ProductVariantsBulkInput!]!
+    // 4) Build tags array from main and sub categories
+    const tags: string[] = [];
+    if (mainCategory) tags.push(mainCategory);
+    if (subCategory) tags.push(subCategory);
+
+    // 5) Create the product
+    const CREATE_PRODUCT_MUTATION = `
+      mutation CreateProductWithMetafieldsAndImage(
+        $title: String!
+        $descriptionHtml: String!
+        $tags: [String!]
+        $metafields: [MetafieldInput!]
+        $media: [CreateMediaInput!]
       ) {
-        productVariantsBulkCreate(
-          productId: $productId
-          strategy: REMOVE_STANDALONE_VARIANT
-          variants: $variants
+        productCreate(
+          product: {
+            title: $title
+            descriptionHtml: $descriptionHtml
+            tags: $tags
+            metafields: $metafields
+          }
+          media: $media
         ) {
-          productVariants {
+          product {
             id
             title
-            price
+            status
           }
           userErrors {
             field
@@ -277,40 +241,88 @@ export async function createProduct(formData: FormData): Promise<void> {
       }
     `;
 
-    const variantsInput = [
+    const productData = await shopifyAdminFetch<ProductCreateResponse>(
+      CREATE_PRODUCT_MUTATION,
       {
-        price,
-        optionValues: [
-          {
-            name: "Default Title",
-            optionName: "Title",
-          },
-        ],
-      },
-    ];
-
-    const variantsData = await shopifyAdminFetch<ProductVariantsCreateResponse>(
-      CREATE_VARIANTS_MUTATION,
-      {
-        productId,
-        variants: variantsInput,
+        title,
+        descriptionHtml,
+        tags,
+        metafields,
+        media,
       }
     );
 
-    const { productVariantsBulkCreate } = variantsData;
+    const { productCreate } = productData;
 
-    if (productVariantsBulkCreate.userErrors.length > 0) {
-      console.error(
-        "productVariantsBulkCreate errors:",
-        productVariantsBulkCreate.userErrors
-      );
-      throw new Error(
-        productVariantsBulkCreate.userErrors.map((e) => e.message).join(", ")
-      );
+    if (productCreate.userErrors.length > 0 || !productCreate.product) {
+      return { 
+        success: false, 
+        error: productCreate.userErrors.map((e) => e.message).join(", ") 
+      };
     }
+
+    const productId = productCreate.product.id;
+
+    // 6) Create a single variant with the price
+    if (price && price > 0) {
+      const CREATE_VARIANTS_MUTATION = `
+        mutation ProductVariantsCreate(
+          $productId: ID!
+          $variants: [ProductVariantsBulkInput!]!
+        ) {
+          productVariantsBulkCreate(
+            productId: $productId
+            strategy: REMOVE_STANDALONE_VARIANT
+            variants: $variants
+          ) {
+            productVariants {
+              id
+              title
+              price
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      `;
+
+      const variantsInput = [
+        {
+          price,
+          optionValues: [
+            {
+              name: "Default Title",
+              optionName: "Title",
+            },
+          ],
+        },
+      ];
+
+      const variantsData = await shopifyAdminFetch<ProductVariantsCreateResponse>(
+        CREATE_VARIANTS_MUTATION,
+        {
+          productId,
+          variants: variantsInput,
+        }
+      );
+
+      const { productVariantsBulkCreate } = variantsData;
+
+      if (productVariantsBulkCreate.userErrors.length > 0) {
+         return {
+            success: true,
+            productId,
+            error: "Product created but price failed: " + productVariantsBulkCreate.userErrors.map((e) => e.message).join(", ")
+         };
+      }
+    }
+
+    return { success: true, productId };
+
+  } catch (err: any) {
+    console.error("Server Action Error:", err);
+    return { success: false, error: err.message || "Unknown server error" };
   }
-
-  console.log("Created product:", productCreate.product);
-
-  return;
 }
