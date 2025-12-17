@@ -1,18 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Raleway } from "next/font/google";
+import { Outfit } from "next/font/google";
 import "@/styles/globals.css";
+import { Navbar } from "@/components/navbar";
+import { Toaster } from "sonner";
+import { ThemeProvider } from "@/components/theme-provider";
 
-const raleway = Raleway({ subsets: ["latin"], variable: "--font-sans" });
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const fontSans = Outfit({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: "Bulk Product Creation Tool",
@@ -25,11 +18,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={raleway.variable}>
+    <html lang="en" className={fontSans.variable} suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className="antialiased"
       >
-        {children}
+        <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+          <Navbar />
+          <main className="bg-muted/10 min-h-[calc(100vh-64px)]">
+            {children}
+          </main>
+          <Toaster richColors/>
+        </ThemeProvider>
       </body>
     </html>
   );

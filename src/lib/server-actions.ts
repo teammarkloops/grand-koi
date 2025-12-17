@@ -148,6 +148,9 @@ export async function createProduct(formData: FormData): Promise<ActionResponse>
     if (!price || Number.isNaN(price)) {
       return { success: false, error: "Valid price is required." };
     }
+    if (!mainCategory) {
+      return { success: false, error: "Main category is required." };
+    }
 
     // 1) Upload image file if provided
     let originalSource: string | null = null;
