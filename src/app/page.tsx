@@ -1,4 +1,7 @@
 // src/app/page.tsx
+"use client";
+
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -9,10 +12,29 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import { createProduct } from "@/lib/server-actions";
 import { SubmitButton } from "./submit-button";
+import {
+  MAIN_CATEGORIES,
+  SUB_CATEGORIES,
+  SEX_OPTIONS,
+  BREEDER_OPTIONS,
+  type MainCategory,
+} from "@/lib/config";
 
 export default function CreateProductPage() {
+  const [mainCategory, setMainCategory] = useState<MainCategory | "">("");
+
+  const handleMainCategoryChange = (
+    e: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    setMainCategory(e.target.value as MainCategory | "");
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl">
@@ -32,20 +54,13 @@ export default function CreateProductPage() {
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="descriptionHtml">
-                  Description (HTML)
-                </FieldLabel>
+                <FieldLabel htmlFor="descriptionHtml">Description</FieldLabel>
                 <Textarea
                   id="descriptionHtml"
                   name="descriptionHtml"
                   defaultValue=""
                   rows={3}
                 />
-              </Field>
-
-              <Field>
-                <FieldLabel htmlFor="vendor">Vendor</FieldLabel>
-                <Input id="vendor" name="vendor" defaultValue="Grand Koi0" />
               </Field>
 
               <Field>
@@ -60,45 +75,115 @@ export default function CreateProductPage() {
                 />
               </Field>
 
+              {/* Category Selection */}
               <Field>
-                <FieldLabel htmlFor="tags">Tags (comma-separated)</FieldLabel>
-                <Input id="tags" name="tags" defaultValue="Other Koi, Sanke" />
-              </Field>
-
-              {/* Metafields matching your example */}
-              <Field>
-                <FieldLabel htmlFor="breeder">
-                  Breeder (metafield custom.breeder)
-                </FieldLabel>
-                <Input id="breeder" name="breeder" defaultValue="Momotaro" />
-              </Field>
-
-              <Field>
-                <FieldLabel htmlFor="sex">
-                  Sex (metafield custom.sex)
-                </FieldLabel>
-                <Input id="sex" name="sex" defaultValue="Female" />
-              </Field>
-
-              <Field>
-                <FieldLabel htmlFor="size">
-                  Size (metafield custom.size)
-                </FieldLabel>
-                <Input id="size" name="size" defaultValue="74.93" />
+                <FieldLabel htmlFor="mainCategory">Main Category</FieldLabel>
+                <NativeSelect
+                  id="mainCategory"
+                  name="mainCategory"
+                  value={mainCategory}
+                  onChange={handleMainCategoryChange}
+                  required
+                >
+                  <NativeSelectOption value="" disabled>
+                    Select main category
+                  </NativeSelectOption>
+                  {MAIN_CATEGORIES.map((category) => (
+                    <NativeSelectOption key={category} value={category}>
+                      {category}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="size_in">
-                  Size in inches (metafield custom.size_in)
-                </FieldLabel>
-                <Input id="size_in" name="size_in" defaultValue="29.5" />
+                <FieldLabel htmlFor="subCategory">Sub Category</FieldLabel>
+                <NativeSelect
+                  id="subCategory"
+                  name="subCategory"
+                  disabled={!mainCategory}
+                  required
+                  defaultValue=""
+                >
+                  <NativeSelectOption value="" disabled>
+                    {mainCategory
+                      ? "Select sub category"
+                      : "Select main category first"}
+                  </NativeSelectOption>
+                  {mainCategory &&
+                    SUB_CATEGORIES[mainCategory].map((subCat) => (
+                      <NativeSelectOption key={subCat} value={subCat}>
+                        {subCat}
+                      </NativeSelectOption>
+                    ))}
+                </NativeSelect>
+              </Field>
+
+              {/* Metafields */}
+              <Field>
+                <FieldLabel htmlFor="breeder">Breeder</FieldLabel>
+                <NativeSelect
+                  id="breeder"
+                  name="breeder"
+                  defaultValue="Momotaro"
+                >
+                  <NativeSelectOption value="" disabled>
+                    Select breeder
+                  </NativeSelectOption>
+                  {BREEDER_OPTIONS.map((breeder) => (
+                    <NativeSelectOption key={breeder} value={breeder}>
+                      {breeder}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="age">
-                  Age (metafield custom.age)
-                </FieldLabel>
-                <Input id="age" name="age" defaultValue="10" />
+                <FieldLabel htmlFor="sex">Sex</FieldLabel>
+                <NativeSelect id="sex" name="sex" defaultValue="Female">
+                  <NativeSelectOption value="" disabled>
+                    Select sex
+                  </NativeSelectOption>
+                  {SEX_OPTIONS.map((sex) => (
+                    <NativeSelectOption key={sex} value={sex}>
+                      {sex}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="size">Size (cm)</FieldLabel>
+                <Input
+                  id="size"
+                  name="size"
+                  type="number"
+                  step="0.01"
+                  defaultValue="74.93"
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="size_in">Size (inches)</FieldLabel>
+                <Input
+                  id="size_in"
+                  name="size_in"
+                  type="number"
+                  step="0.01"
+                  defaultValue="29.5"
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="age">Age (years)</FieldLabel>
+                <Input
+                  id="age"
+                  name="age"
+                  type="number"
+                  step="1"
+                  min="0"
+                  defaultValue="10"
+                />
               </Field>
 
               {/* Image upload */}

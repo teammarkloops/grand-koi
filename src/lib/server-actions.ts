@@ -122,9 +122,11 @@ async function uploadImageToShopify(file: File): Promise<string> {
 export async function createProduct(formData: FormData): Promise<void> {
   const title = String(formData.get("title") ?? "");
   const descriptionHtml = String(formData.get("descriptionHtml") ?? "");
-  const vendor = String(formData.get("vendor") ?? "");
   const price = parseFloat(String(formData.get("price") ?? "0"));
-  const tags = String(formData.get("tags") ?? "");
+
+  // Get category selections for tags
+  const mainCategory = String(formData.get("mainCategory") ?? "");
+  const subCategory = String(formData.get("subCategory") ?? "");
 
   const breeder = String(formData.get("breeder") ?? "");
   const sex = String(formData.get("sex") ?? "");
@@ -144,7 +146,7 @@ export async function createProduct(formData: FormData): Promise<void> {
     originalSource = await uploadImageToShopify(imageFile);
   }
 
-  // 2) Prepare metafields matching your manual product (plus age)
+  // 2) Prepare metafields
   const metafields = [
     breeder && {
       namespace: "custom",
@@ -194,12 +196,16 @@ export async function createProduct(formData: FormData): Promise<void> {
       ]
     : [];
 
-  // 4) Create the product (title, description, vendor, tags, metafields, media)
+  // 4) Build tags array from main and sub categories
+  const tags: string[] = [];
+  if (mainCategory) tags.push(mainCategory);
+  if (subCategory) tags.push(subCategory);
+
+  // 5) Create the product
   const CREATE_PRODUCT_MUTATION = `
     mutation CreateProductWithMetafieldsAndImage(
       $title: String!
       $descriptionHtml: String!
-      $vendor: String
       $tags: [String!]
       $metafields: [MetafieldInput!]
       $media: [CreateMediaInput!]
@@ -208,7 +214,6 @@ export async function createProduct(formData: FormData): Promise<void> {
         product: {
           title: $title
           descriptionHtml: $descriptionHtml
-          vendor: $vendor
           tags: $tags
           metafields: $metafields
         }
@@ -232,13 +237,7 @@ export async function createProduct(formData: FormData): Promise<void> {
     {
       title,
       descriptionHtml,
-      vendor: vendor || null,
-      tags: tags
-        ? tags
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean)
-        : [],
+      tags,
       metafields,
       media,
     }
@@ -253,7 +252,7 @@ export async function createProduct(formData: FormData): Promise<void> {
 
   const productId = productCreate.product.id;
 
-  // 5) Create a single variant with the price, replacing the standalone variant.
+  // 6) Create a single variant with the price
   if (price && price > 0) {
     const CREATE_VARIANTS_MUTATION = `
       mutation ProductVariantsCreate(
@@ -313,6 +312,5 @@ export async function createProduct(formData: FormData): Promise<void> {
 
   console.log("Created product:", productCreate.product);
 
-  // Return nothing to satisfy <form action={createProduct}> typing
   return;
 }
