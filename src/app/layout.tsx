@@ -32,7 +32,7 @@ export default function RootLayout({
           <main className="bg-muted/10 min-h-[calc(100vh-64px)]">
             {children}
           </main>
-          <Toaster richColors/>
+          <Toaster richColors position="top-right"/>
         </ThemeProvider>
       </body>
     </html>

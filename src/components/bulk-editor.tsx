@@ -199,7 +199,7 @@ export function BulkEditor() {
     saveToLocalStorage(updatedRows); // Instant save so refresh keeps them
     setShowTestModal(false);
     setTestImage(null);
-    toast.success(`Added ${testCount} Test Products`);
+    toast.success('Test Products Added');
   };
 
   const addRow = () => {
@@ -441,7 +441,7 @@ export function BulkEditor() {
                 <div 
                     key={row.id} 
                     className={`
-                        group relative overflow-visible flex flex-col md:flex-row gap-6 p-6 rounded-xl border bg-card shadow-sm transition-all
+                        group relative overflow-hidden flex flex-col md:flex-row gap-6 p-6 rounded-xl border bg-card shadow-sm transition-all
                         ${isDone ? "border-green-200 bg-green-50/30 dark:bg-green-900/20" : "hover:shadow-md"}
                         ${isError ? "border-red-300 bg-red-50/30 dark:bg-red-900/20" : ""}
                     `}
@@ -668,7 +668,7 @@ export function BulkEditor() {
       {/* Footer Instructions */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 border rounded-lg bg-muted/20">
          <Save className="h-4 w-4 text-blue-500" />
-         <span>Progress saves automatically. Local storage clears only when all products upload successfully.</span>
+         <span>Progress saves automatically.</span>
       </div>
     </div>
   );
