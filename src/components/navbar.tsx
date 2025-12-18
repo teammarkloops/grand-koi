@@ -2,15 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Moon, Sun, FishSymbol } from "lucide-react";
+import { Moon, Sun, FishSymbol, LogOut } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+import { logoutAction } from "@/lib/auth-actions"; // Import the action
 
 export function Navbar() {
   const pathname = usePathname();
   const { setTheme, theme } = useTheme();
 
   const isActive = (path: string) => pathname === path;
+
+  // Don't show navbar on login page
+  if (pathname === "/login") return null;
 
   return (
     <nav className="border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
@@ -57,6 +61,15 @@ export function Navbar() {
             <Moon className="absolute h-[1.1rem] w-[1.1rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             <span className="sr-only">Toggle theme</span>
           </Button>
+          
+          <div className="w-px h-6 bg-border mx-1"></div>
+
+          {/* Logout Button */}
+          <form action={logoutAction}>
+            <Button variant="ghost" type="submit" size="sm" className="text-muted-foreground hover:text-red-500">
+                <LogOut className="h-4 w-4" />
+            </Button>
+          </form>
         </div>
       </div>
     </nav>
