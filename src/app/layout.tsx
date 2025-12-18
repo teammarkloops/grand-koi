@@ -8,7 +8,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 const fontSans = Outfit({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
-  title: "Bulk Product Creation Tool",
+  title: "Grand Koi | Product Creation Tool",
   description: "Bulk Product Creation Tool",
 };
 
