@@ -313,9 +313,7 @@ export function BulkEditor() {
     const isNotEmpty = rows.length > 0 && (rows[0].title !== "" || rows.length > 1);
     if (isNotEmpty && rows.every(r => r.status === "success")) {
         localStorage.removeItem(STORAGE_KEY);
-        toast.success("All products uploaded successfully!", {
-             description: "Draft storage has been cleared for a fresh start."
-        });
+        toast.success("All products uploaded successfully!");
     }
   }, [rows]);
 
