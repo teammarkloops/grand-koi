@@ -2,29 +2,39 @@
 
 import { Button } from "@/components/ui/button";
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { loginAction } from "@/lib/auth-actions";
 import { Lock } from "lucide-react";
-import { useState } from "react";
+import { useRef } from "react";
+import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
+function LoginButton() {
+  const { pending } = useFormStatus();
+  
+  return (
+    <Button className="w-full" type="submit" disabled={pending}>
+      {pending ? "Verifying..." : "Sign In"}
+    </Button>
+  );
+}
+
+
 export default function LoginPage() {
-  const [isLoading, setIsLoading] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   async function handleSubmit(formData: FormData) {
-    setIsLoading(true);
     const result = await loginAction(formData);
     
     // If we get here, it means there was an error (success redirects automatically)
     if (result?.error) {
       toast.error("Access Denied", { description: result.error });
-      setIsLoading(false);
     }
   }
 
@@ -42,7 +52,7 @@ export default function LoginPage() {
             Enter your password to access the dashboard
           </CardDescription>
         </CardHeader>
-        <form action={handleSubmit}>
+        <form action={handleSubmit} ref={formRef} >
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Input
@@ -53,9 +63,7 @@ export default function LoginPage() {
                 className="text-center tracking-widest"
               />
             </div>
-            <Button className="w-full" type="submit" disabled={isLoading}>
-              {isLoading ? "Verifying..." : "Sign In"}
-            </Button>
+            <LoginButton />
           </CardContent>
         </form>
       </Card>
