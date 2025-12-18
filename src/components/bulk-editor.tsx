@@ -52,6 +52,7 @@ export interface ProductRow {
   sizeCm: string;
   sizeIn: string;
   imageFile: File | null;
+  imagePreviewUrl?: string;
   status: UploadStatus;
   errorMessage?: string;
 }
@@ -80,7 +81,8 @@ export function BulkEditor() {
         const hydrated = parsed.map((p: any) => ({
           ...p,
           imageFile: null,
-          status: p.status === "pending" ? "idle" : p.status, // Reset stuck pending
+          imagePreviewUrl: undefined,
+          status: p.status === "pending" ? "idle" : p.status,
         }));
         
         if (hydrated.length > 0) {
@@ -110,11 +112,20 @@ export function BulkEditor() {
     };
   }, [rows, isClient]);
 
+  // Cleanup object URLs
+  useEffect(() => {
+    return () => {
+      rows.forEach(row => {
+        if (row.imagePreviewUrl) URL.revokeObjectURL(row.imagePreviewUrl);
+      });
+    };
+  }, [rows]);
+
   // --- Helper Functions ---
 
   // Centralized save function to ensure consistency
   const saveToLocalStorage = (currentRows: ProductRow[]) => {
-    const dataToSave = currentRows.map(({ imageFile, ...rest }) => rest);
+    const dataToSave = currentRows.map(({ imageFile, imagePreviewUrl, ...rest }) => rest);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
   };
 
@@ -157,9 +168,12 @@ export function BulkEditor() {
        toast.warning("You are creating a very large batch. Uploading might take time.");
     }
 
+    // FIX: Properly detect if the single existing row is "empty"
     const isFirstRowEmpty = rows.length === 1 && !rows[0].title && !rows[0].price;
-    const startCount = isFirstRowEmpty ? 0 : rows.length;
+    const startIndex = isFirstRowEmpty ? 0 : rows.length;
     
+    const testPreviewUrl = testImage ? URL.createObjectURL(testImage) : undefined;
+
     const newRows: ProductRow[] = Array.from({ length: testCount }).map((_, i) => {
       const mainCat = MAIN_CATEGORIES[Math.floor(Math.random() * MAIN_CATEGORIES.length)];
       const subCats = SUB_CATEGORIES[mainCat];
@@ -172,7 +186,7 @@ export function BulkEditor() {
       
       return {
         id: crypto.randomUUID(),
-        title: `Test Product ${startCount + i + 1}`,
+        title: `Test Product ${startIndex + i + 1}`,
         description: `Generated: ${breeder} ${subCat} (${sex})`,
         price: price,
         mainCategory: mainCat,
@@ -183,6 +197,7 @@ export function BulkEditor() {
         sizeCm: sizeCm,
         sizeIn: (parseFloat(sizeCm) / 2.54).toFixed(1),
         imageFile: testImage,
+        imagePreviewUrl: testPreviewUrl,
         status: "idle",
       };
     });
@@ -240,6 +255,17 @@ export function BulkEditor() {
     setRows((prev) =>
       prev.map((row) => {
         if (row.id !== id) return row;
+        
+        if (field === "imageFile") {
+            const file = value as File | null;
+            if (row.imagePreviewUrl) URL.revokeObjectURL(row.imagePreviewUrl);
+            return {
+                ...row,
+                imageFile: file,
+                imagePreviewUrl: file ? URL.createObjectURL(file) : undefined
+            };
+        }
+
         if (field === "mainCategory") {
            return { ...row, [field]: value, subCategory: "" };
         }
@@ -449,9 +475,9 @@ export function BulkEditor() {
                         isDone ? "bg-green-500" : isError ? "bg-red-500" : isPending ? "bg-blue-500" : "bg-muted"
                     }`} />
 
-                    {/* Left: Image Upload */}
+                    {/* Left: Image Upload with Preview */}
                     <div className="shrink-0">
-                         <div className="w-full md:w-24 h-24 relative">
+                         <div className="w-full md:w-24 h-24 relative group/image">
                              <input 
                                  type="file" 
                                  id={`file-${row.id}`}
@@ -466,24 +492,27 @@ export function BulkEditor() {
                              <label 
                                  htmlFor={`file-${row.id}`}
                                  className={`
-                                     flex flex-col items-center justify-center w-full h-full rounded-lg border-2 border-dashed
+                                     flex flex-col items-center justify-center w-full h-full rounded-lg border-2 border-dashed overflow-hidden
                                      cursor-pointer transition-colors
-                                     ${row.imageFile ? "border-green-400 bg-green-50 dark:bg-green-900/20" : "border-muted hover:border-primary hover:bg-muted/50"}
+                                     ${row.imageFile ? "border-solid border-green-500" : "border-muted hover:border-primary hover:bg-muted/50"}
                                      ${(isDone || isPending) ? "pointer-events-none opacity-60" : ""}
                                  `}
                              >
-                                 {row.imageFile ? (
-                                    <div className="text-center p-2">
-                                        <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                                        <p className="text-xs text-green-700 dark:text-green-400 font-medium truncate max-w-[140px]">
-                                            {row.imageFile.name}
-                                        </p>
-                                        <p className="text-[10px] text-green-600">Click to change</p>
+                                 {row.imagePreviewUrl ? (
+                                    <div className="relative w-full h-full">
+                                        <img 
+                                            src={row.imagePreviewUrl} 
+                                            alt="Preview" 
+                                            className="w-full h-full object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/image:opacity-100 transition-opacity">
+                                            <span className="text-white text-xs font-medium">Change</span>
+                                        </div>
                                     </div>
                                  ) : (
-                                    <div className="text-center text-muted-foreground">
-                                        <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                        <span className="text-xs font-medium">Upload</span>
+                                    <div className="text-center text-muted-foreground p-2">
+                                        <ImageIcon className="h-8 w-8 mx-auto mb-1 opacity-50" />
+                                        <span className="text-[10px] font-medium uppercase tracking-wide">Upload</span>
                                     </div>
                                  )}
                              </label>
