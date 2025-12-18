@@ -2,10 +2,31 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Moon, Sun, FishSymbol, LogOut } from "lucide-react";
+import { Moon, Sun, FishSymbol, LogOut, Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import { logoutAction } from "@/lib/auth-actions"; // Import the action
+import { logoutAction } from "@/lib/auth-actions"; 
+import { useFormStatus } from "react-dom";
+
+function LogoutButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button 
+      variant="ghost" 
+      type="submit" 
+      size="sm" 
+      className="text-muted-foreground hover:text-red-500"
+      disabled={pending}
+    >
+      {pending ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <LogOut className="h-4 w-4" />
+      )}
+    </Button>
+  );
+}
 
 export function Navbar() {
   const pathname = usePathname();
@@ -66,9 +87,7 @@ export function Navbar() {
 
           {/* Logout Button */}
           <form action={logoutAction}>
-            <Button variant="ghost" type="submit" size="sm" className="text-muted-foreground hover:text-red-500">
-                <LogOut className="h-4 w-4" />
-            </Button>
+            <LogoutButton />
           </form>
         </div>
       </div>
