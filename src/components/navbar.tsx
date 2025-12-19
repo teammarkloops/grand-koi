@@ -56,17 +56,17 @@ export function Navbar() {
               isActive("/") ? "text-foreground font-bold" : "text-muted-foreground"
             }`}
           >
-            <span className="hidden sm:inline">Single Upload</span>
-            <span className="sm:hidden">Single</span>
+            <span className="hidden sm:inline">Bulk Upload</span>
+            <span className="sm:hidden">Bulk</span> 
           </Link>
           <Link
-            href="/bulk"
+            href="/single"
             className={`transition-colors hover:text-primary whitespace-nowrap ${
-              isActive("/bulk") ? "text-foreground font-bold" : "text-muted-foreground"
+              isActive("/single") ? "text-foreground font-bold" : "text-muted-foreground"
             }`}
           >
-            <span className="hidden sm:inline">Bulk Upload</span>
-            <span className="sm:hidden">Bulk</span>
+            <span className="hidden sm:inline">Single Upload</span>
+            <span className="sm:hidden">Single</span>
           </Link>
         </div>
 
