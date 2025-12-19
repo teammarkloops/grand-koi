@@ -61,6 +61,7 @@ export default function LoginPage() {
                 placeholder="Enter Password"
                 required
                 className="text-center tracking-widest"
+                defaultValue={"Admin123"} //for testing...
               />
             </div>
             <LoginButton />
